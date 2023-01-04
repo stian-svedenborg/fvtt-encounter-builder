@@ -105,14 +105,14 @@ class EncounterBuilderApplication extends Application {
         this.allies.forEach(function (ally, index) {
 
             let level;
-            if (ally.data.type === "character") {
-                level = parseInt(ally.data.data.details.level);
+            if (ally.type === "character") {
+                level = parseInt(ally.system.details.level);
                 if (level === 0) {
                     level = 1;
                 }
             }
-            else if (ally.data.type === "npc") {
-                let xp = EB.CRtoXP[ally.data.data.details.cr];
+            else if (ally.type === "npc") {
+                let xp = EB.CRtoXP[ally.system.details.cr];
                 level = EB.xpThresholds.deadly.findIndex(e => e >= xp)
                 if (level < 0) {
                     level = 19;
@@ -127,15 +127,15 @@ class EncounterBuilderApplication extends Application {
         });
         this.opponents.forEach(function (opponent, index) {
             let xp;
-            if (opponent.data.type === "character") {
-                let level = opponent.data.data.details.level
+            if (opponent.type === "character") {
+                let level = opponent.system.details.level
                 if (level === 0) {
                     level = 1;
                 }
                 xp = EB.xpThresholds[EB.difficultyToTreatPC][level - 1]
             }
-            else if (opponent.data.type === "npc") {
-                xp = opponent.data.data.details.xp.value;
+            else if (opponent.type === "npc") {
+                xp = opponent.system.details.xp.value;
             }
             totalXP += xp;
         });
@@ -211,20 +211,13 @@ class EncounterBuilderApplication extends Application {
      * @memberof EncounterBuilderApplication
      */
     async _onDropGeneral(event) {
-        let data;
-        data = JSON.parse(event.dataTransfer.getData("text/plain"));
+        const data = JSON.parse(event.dataTransfer.getData("text/plain"));
         if (data.type !== game.actors.documentName) {
             throw new Error(game.i18n.localize("EB.EntityError"));
         }
 
         const app = game.users.apps.find(e => e.id === game.i18n.localize("EB.id"));
-        let actor;
-        if (data.pack) {
-			actor = await Actor.fromDropData(data);
-        }
-        else {
-            actor = game.actors.get(data.id);
-        }
+        const actor = await Actor.fromDropData(data);
         return [app, actor]
     }
 
@@ -241,7 +234,7 @@ class EncounterBuilderApplication extends Application {
 
         let actorExists;
         let actorExistsOpposing;
-        if (actor.data.type === "character") {
+        if (actor.type === "character") {
             actorExists = app.allies.find(e => e.id === actor.id)
             actorExistsOpposing = app.opponents.find(e => e.id === actor.id);
 
@@ -253,7 +246,7 @@ class EncounterBuilderApplication extends Application {
                 app.allies.push(actor)
             }
         }
-        else if (actor.data.type === "npc") {
+        else if (actor.type === "npc") {
             app.allies.push(actor);
         }
 
@@ -270,12 +263,11 @@ class EncounterBuilderApplication extends Application {
      */
     async _onDropOpponent(event) {
         event.preventDefault();
-
         let [app, actor] = await this._onDropGeneral(event)
 
         let actorExists;
         let actorExistsOpposing;
-        if (actor.data.type === "character") {
+        if (actor.type === "character") {
             actorExists = app.opponents.find(e => e.id === actor.id);
             actorExistsOpposing = app.allies.find(e => e.id === actor.id);
 
@@ -288,7 +280,7 @@ class EncounterBuilderApplication extends Application {
             }
 
         }
-        else if (actor.data.type === "npc") {
+        else if (actor.type === "npc") {
             app.opponents.push(actor);
         }
 
