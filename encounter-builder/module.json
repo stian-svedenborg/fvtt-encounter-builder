@@ -2,12 +2,19 @@
   "id": "encounter-builder",
   "title": "5e Encounter Builder",
   "description": "Adds an application to determine encounter difficulty, based on the Kobold Fight Club. [Fork]",
-  "version": "0.3.5",
+  "version": "0.4.2",
   "compatibility": {
     "minimum": "10",
     "verified": "10.291"
   },
-  "authors": ["RaySSharma", "Stian Svedenborg"],
+  "authors": [
+    {
+      "name": "RaySSharma"
+    },
+    {
+      "name": "Stian Svedenborg"
+    }
+  ],
   "scripts": [
     "./src/encounter-builder.js",
     "./src/builder-form.js"

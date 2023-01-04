@@ -212,13 +212,32 @@ class EncounterBuilderApplication extends Application {
      */
     async _onDropGeneral(event) {
         const data = JSON.parse(event.dataTransfer.getData("text/plain"));
-        if (data.type !== game.actors.documentName) {
+        const actors = []
+
+        function recur_folder(folder) {
+            const actors = folder.contents
+            const subfolders = folder.getSubfolders()
+            for (let i = 0; i < subfolders.length; i++) {
+                actors.push(...recur_folder(subfolders[i]))
+            }
+
+            return actors
+        }
+
+        if (data.type === "Folder" && data.documentName === "Actor") {
+            const folder = await Folder.fromDropData(data)
+            actors.push(...recur_folder(folder))
+        }
+        else if (data.type === game.actors.documentName) {
+            const actor = await Actor.fromDropData(data);
+            actors.push(actor)
+        }
+        else {
             throw new Error(game.i18n.localize("EB.EntityError"));
         }
 
         const app = game.users.apps.find(e => e.id === game.i18n.localize("EB.id"));
-        const actor = await Actor.fromDropData(data);
-        return [app, actor]
+        return [app, actors]
     }
 
     /**
@@ -229,31 +248,10 @@ class EncounterBuilderApplication extends Application {
      */
     async _onDropAlly(event) {
         event.preventDefault();
-
-        let [app, actor] = await this._onDropGeneral(event);
-
-        let actorExists;
-        let actorExistsOpposing;
-        if (actor.type === "character") {
-            actorExists = app.allies.find(e => e.id === actor.id)
-            actorExistsOpposing = app.opponents.find(e => e.id === actor.id);
-
-            if (actorExistsOpposing) {
-                let ix = this.opponents.findIndex(e => e.id === actor.id);
-                this.opponents.splice(ix, 1);
-            }
-            if (!actorExists) {
-                app.allies.push(actor)
-            }
-        }
-        else if (actor.type === "npc") {
-            app.allies.push(actor);
-        }
-
-        app.calcXPThresholds();
-        app.calcRating();
-        app.render();
+        let [app, actors] = await this._onDropGeneral(event);
+        await this.processDrop(event, app.allies, app.opponents, app, actors)
     }
+
 
     /**
      * Ondrop for opponents. Cannot have a playable character multiple times. Can have monsters/npcs multiple times.
@@ -263,26 +261,31 @@ class EncounterBuilderApplication extends Application {
      */
     async _onDropOpponent(event) {
         event.preventDefault();
-        let [app, actor] = await this._onDropGeneral(event)
+        let [app, actors] = await this._onDropGeneral(event);
+        await this.processDrop(event, app.opponents, app.allies, app, actors)
+    }
+
+    async processDrop(event, currentDropZone, opposingDropZone, app, actors) {
 
         let actorExists;
         let actorExistsOpposing;
-        if (actor.type === "character") {
-            actorExists = app.opponents.find(e => e.id === actor.id);
-            actorExistsOpposing = app.allies.find(e => e.id === actor.id);
+        actors.forEach(function (actor) {
+            if (actor.type === "character") {
+                actorExists = currentDropZone.find(e => e.id === actor.id)
+                actorExistsOpposing = opposingDropZone.find(e => e.id === actor.id);
 
-            if (actorExistsOpposing) {
-                let ix = this.allies.findIndex(e => e.id === actor.id);
-                this.allies.splice(ix, 1);
+                if (actorExistsOpposing) {
+                    let ix = opposingDropZone.findIndex(e => e.id === actor.id);
+                    opposingDropZone.splice(ix, 1);
+                }
+                if (!actorExists) {
+                    currentDropZone.push(actor)
+                }
             }
-            if (!actorExists) {
-                app.opponents.push(actor)
+            else if (actor.type === "npc") {
+                currentDropZone.push(actor);
             }
-
-        }
-        else if (actor.type === "npc") {
-            app.opponents.push(actor);
-        }
+        })
 
         app.calcXPThresholds();
         app.calcRating();
